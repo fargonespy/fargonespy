@@ -7,6 +7,7 @@ import com.fasterxml.jackson.databind.PropertyNamingStrategy;
 import com.fasterxml.jackson.datatype.jdk8.Jdk8Module;
 import com.gonespy.service.auth.resources.AuthResource;
 import com.gonespy.service.auth.resources.VersionResource;
+import com.gonespy.service.user.UserManager;
 import io.dropwizard.Application;
 import io.dropwizard.configuration.EnvironmentVariableSubstitutor;
 import io.dropwizard.configuration.SubstitutingSourceProvider;
@@ -29,12 +30,10 @@ public class AuthService extends Application<AuthServiceConfiguration> {
 		Security.setProperty("jdk.tls.legacyAlgorithms", "SSL_RSA_WITH_RC4_128_MD5");
 	}
 
-	public static void main(String[] args) {
-		try {
-			new AuthService().run(args);
-		} catch(Exception e) {
-			e.printStackTrace();
-		}
+	private final UserManager userManager;
+
+	public AuthService(UserManager userManager) {
+		this.userManager = userManager;
 	}
 
 	@Override
@@ -60,7 +59,7 @@ public class AuthService extends Application<AuthServiceConfiguration> {
 	@Override
 	public void run(AuthServiceConfiguration configuration, Environment environment) {
 
-		AuthResource authResource = new AuthResource();
+		AuthResource authResource = new AuthResource(this.userManager);
 
 		// resources
 		environment.jersey().register(new VersionResource());

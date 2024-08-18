@@ -11,6 +11,7 @@ import java.util.regex.Pattern;
 public abstract class GPMessageUtils {
 
     private static String MESSAGE_DELIMITER = "\\";
+    private static char MESSAGE_DELIMITER_CHAR = '\\';
     private static String REGEX_ESCAPED_MESSAGE_DELIMITER = "\\\\";
     private static String MESSAGE_TERMINATOR = MESSAGE_DELIMITER + "final" + MESSAGE_DELIMITER;
 
@@ -21,9 +22,31 @@ public abstract class GPMessageUtils {
         StringBuilder msg = new StringBuilder();
         byte[] buffer = new byte[1024];
         int read;
-        while((read = reader.read(buffer))!=-1) {
+        String cmd;
+        while (true) {
+            read = reader.read(buffer);
+            if (read == -1) {
+                break;
+            }
             String bytesRead = new String(buffer, 0, read);
             msg.append(bytesRead);
+
+            var d = msg.toString();
+            if (d.isEmpty()) {
+                throw new RuntimeException("empty command");
+            }
+            if (d.charAt(0) != MESSAGE_DELIMITER_CHAR) {
+                throw new RuntimeException("expected delimiter");
+            }
+
+            String val;
+            for (var i = 1; i < d.length(); i++) {
+                if (d.charAt(i) == MESSAGE_DELIMITER_CHAR) {
+                   val = d.substring(1, i);
+                   break;
+                }
+            }
+
             if(bytesRead.endsWith(MESSAGE_TERMINATOR)) {
                 break;
             }

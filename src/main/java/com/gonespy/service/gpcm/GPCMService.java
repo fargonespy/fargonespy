@@ -9,6 +9,8 @@ package com.gonespy.service.gpcm;
 
 import java.io.IOException;
 import java.net.ServerSocket;
+
+import com.gonespy.service.user.UserManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -19,8 +21,10 @@ public class GPCMService implements Runnable {
 
     public static final int GPCM_PORT_NUMBER = 29900;
 
-    public static void main(String[] args) {
-        new GPCMService().run();
+    private final UserManager userManager;
+
+    public GPCMService(UserManager userManager) {
+        this.userManager = userManager;
     }
 
     @Override
@@ -28,7 +32,7 @@ public class GPCMService implements Runnable {
         try (ServerSocket serverSocket = new ServerSocket(GPCM_PORT_NUMBER)) {
             LOG.info("Listening on port " + GPCM_PORT_NUMBER);
             while (true) {
-                new GPCMServiceThread(serverSocket.accept()).start();
+                new GPCMServiceThread(userManager, serverSocket.accept()).start();
             }
         } catch (IOException e) {
             System.err.println("Could not listen on port " + GPCM_PORT_NUMBER);

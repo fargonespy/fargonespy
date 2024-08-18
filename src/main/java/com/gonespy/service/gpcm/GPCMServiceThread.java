@@ -4,22 +4,23 @@ package com.gonespy.service.gpcm;
  * Created by gonespy on 8/02/2018.
  */
 
-import com.gonespy.service.shared.GPState;
+import com.gonespy.service.user.UserManager;
+import com.gonespy.service.util.GPMessageReader;
 import com.gonespy.service.util.GPNetworkException;
 import com.gonespy.service.util.StringUtils;
 import com.gonespy.service.shared.Constants;
+import com.gonespy.service.util.UserUtils;
 import com.google.common.base.Strings;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.PrintWriter;
+import java.io.OutputStream;
 import java.net.Socket;
-import java.util.LinkedHashMap;
-import java.util.Map;
+import java.nio.charset.StandardCharsets;
+import java.util.*;
 
-import static com.gonespy.service.shared.GPState.*;
 import static com.gonespy.service.util.GPMessageUtils.*;
 
 public class GPCMServiceThread extends Thread {
@@ -33,84 +34,200 @@ public class GPCMServiceThread extends Thread {
     private static final String DUMMY_LOGIN_TOKEN = "XdR2LlH69XYzk3KCPYDkTY__";
     public static final String DUMMY_UNIQUE_NICK = "BulletstormPlayer";
 
-    private Socket socket;
+    private static Map<Long, GPCMServiceThread> handles = new HashMap<>();
+    private static Map<Long, Set<Long>> subscribers = new HashMap<>();
 
-    public GPCMServiceThread(Socket socket) {
+
+    private final UserManager userManager;
+
+    private final Socket socket;
+
+    private final OutputStream os;
+
+
+
+    private long profileID;
+    private String nick;
+
+    private Set<Long> buddies = new HashSet<>();
+
+    public GPCMServiceThread(UserManager userManager, Socket socket) throws IOException {
         super("GPSPServiceThread");
+        this.userManager = userManager;
         this.socket = socket;
+        this.os = socket.getOutputStream();
     }
+
+
+    private synchronized void send(String reply) throws IOException {
+        LOG.info("sending: {}", reply);
+        byte[] data = reply.getBytes(StandardCharsets.UTF_8);
+        os.write(data);
+        os.flush();
+    }
+
+    private void sendUserStatus(UserManager.User user) throws IOException {
+        var buddyStatus = new LinkedHashMap<String, String>();
+        buddyStatus.put("bm", "100");
+        buddyStatus.put("f", Long.toString(user.getProfileID()));
+        String msg;
+        if (user.isOnline()) {
+            msg = String.format("|s|%s|ss|%s|ls|%s|ip|%d|p|0|qm|0",
+                    "2", // status
+                    user.getStatus(),
+                    user.getLocation(),
+                    33686018 // get_ip_as_int
+            );
+        } else {
+            msg = "|s|0|ss|Offline";
+        }
+        buddyStatus.put("msg", msg);
+        send(createGPMessage(buddyStatus));
+    }
+
 
     // additional calls seen:
 
     // UT3
     // \addbuddy\\sesskey\5555\newprofileid\0\reason\PS3 Buddy Sync\final\\addbuddy\\sesskey\5555\newprofileid\0\reason\PS3 Buddy Sync\final\
 
+    private void handleAddBuddy(Map<String, String> params) throws IOException {
+        var profileID = Long.parseLong(params.get("newprofileid"));
+        var user = this.userManager.getUser(profileID);
+        sendUserStatus(user);
+        buddies.add(profileID);
+        synchronized (GPCMServiceThread.class) {
+            if (!subscribers.containsKey(profileID)) {
+                subscribers.put(profileID, new HashSet<>());
+            }
+            subscribers.get(profileID).add(this.profileID);
+        }
+    }
+
+    private void handleGetProfile(Map<String, String> params) throws IOException {
+        var profileID = Long.parseLong(params.get("profileid"));
+        var user = this.userManager.getUser(profileID);
+
+        var profile = new LinkedHashMap<String, String>();
+        profile.put("pi", "");
+        profile.put("profileid", Long.toString(profileID));
+        profile.put("nick", user.getNick());
+        profile.put("userid", Long.toString(profileID)+1);
+        profile.put("email", "foo@bar.com");
+        profile.put("sig", "abc123");
+        profile.put("uniquenick", user.getNick());
+        profile.put("pid", "11");
+        profile.put("lon", "0.000000");
+        profile.put("lat", "0.000000");
+        profile.put("loc", "");
+        profile.put("id", params.get("id"));
+        send(createGPMessage(profile));
+    }
+
+
     public void run() {
-
-        GPState state = CONNECT;
-
         try (
-                InputStream reader = socket.getInputStream();
-                PrintWriter out = new PrintWriter(socket.getOutputStream(), true);
+                InputStream is = socket.getInputStream();
         ) {
+            Map<String,String> responseDataMap = new LinkedHashMap<>();
+            responseDataMap.put("lc", "1");
+            responseDataMap.put("challenge", DUMMY_SERVER_CHALLENGE);
+            responseDataMap.put("id", "1");
+            send(createGPMessage(responseDataMap));
 
-            while(socket.isConnected() && state != DONE) {
+            var msgReader = new GPMessageReader(is);
+            var peer = socket.getRemoteSocketAddress();
 
-                if(state == CONNECT) {
-                    // server talks first
-                    // \lc\1\challenge\ZXX7h9eiTe0EP5teW1yiajFqY5URTykw\id\1\final\
-                    Map<String,String> responseDataMap = new LinkedHashMap<>();
-                    responseDataMap.put("lc", "1");
-                    responseDataMap.put("challenge", DUMMY_SERVER_CHALLENGE);
-                    responseDataMap.put("id", "1");
-                    out.print(createGPMessage(responseDataMap));
-                    out.flush();
-                    state = WAIT;
-                } else if(state == WAIT) {
-                    sleep(10);
+            while(true) {
+                var msg = msgReader.read();
+                if (msg == null) {
+                   LOG.info("[{}] Disconnecting.", peer);
+                   break;
+                }
 
-                    final String clientString = readGPMessage(reader);
-                    final String directive = getGPDirective(clientString);
+                LOG.info("[{}] Message from client: {}({}) {}", peer, msg.getCommand(), msg.getCommandValue(), msg.getParams());
 
-                    if(directive == null) {
-                        if(clientString != null && clientString.length() > 0) {
-                            // unrecognized message format
-                            LOG.warn("Unrecognized message format. Message: " + clientString);
+                switch (msg.getCommand()) {
+                    case "login" -> handleLogin(msg.getParams());
+                    case "getprofile" -> handleGetProfile(msg.getParams());
+                    case "updatepro" -> handleUpdateProfile(msg.getParams());
+                    case "status" -> handleStatus(msg);
+                    case "ka" -> handleKeepAlive(msg.getParams());
+                    case "addbuddy" -> handleAddBuddy(msg.getParams());
+                    default -> LOG.info("[{}] unimplemented command '{}'", peer, msg.getCommand());
+                }
+
+            }
+
+        } catch (GPNetworkException e) {
+            LOG.info("Client closed connection");
+        } catch (IOException e) {
+            e.printStackTrace();
+        } finally {
+            try {
+                LOG.info("Closing socket");
+                synchronized (GPCMServiceThread.class) {
+                    if (profileID != 0) {
+                        handles.remove(profileID);
+                        for (var b : buddies) {
+                            subscribers.get(b).remove(profileID);
                         }
-                    } else if(directive.equals("login")) {
+                    }
+                }
+                socket.close();
+            } catch(IOException e) {
+                LOG.info("Could not close socket. Oh well..");
+            }
+        }
+    }
 
-                        // request should look like:
-                        // \login\\challenge\l0OtMmxlm2pPSy5ra4lynHSMB2Qbci7M\authtoken\1111\partnerid\19\response\d3e1370bf11b79770e2dc6b36cecfb6a\port\6500\productid\12999\gamename\bstormps3\namespaceid\28\sdkrevision\59\quiet\0\id\1\final\
-                        Map<String, String> inputMap = parseClientLogin(clientString);
-                        LOG.info(clientString);
 
-                        // response should look like:
-                        // \blk\0\list\\final\\bdy\0\list\\final\\lc\2\sesskey\55555555555555555555555555555555\ userid\66666666666666666666666666666666\profileid\77777777777777777777777777777777\lt\XdR2LlH69XYzk3KCPYDkTY__\proof\10504cc226cc97f1d15f8c3269407500\id\1\final\
-                        final String user = inputMap.get("authtoken"); // user = authtoken for PS3 preauth
-                        final String clientChallenge = inputMap.get("challenge");
+    private void handleLogin(Map<String, String> params) throws IOException {
+        // request should look like:
+        // \login\\challenge\l0OtMmxlm2pPSy5ra4lynHSMB2Qbci7M\authtoken\1111\partnerid\19\response\d3e1370bf11b79770e2dc6b36cecfb6a\port\6500\productid\12999\gamename\bstormps3\namespaceid\28\sdkrevision\59\quiet\0\id\1\final\
+        // response should look like:
+        // \blk\0\list\\final\\bdy\0\list\\final\\lc\2\sesskey\55555555555555555555555555555555\ userid\66666666666666666666666666666666\profileid\77777777777777777777777777777777\lt\XdR2LlH69XYzk3KCPYDkTY__\proof\10504cc226cc97f1d15f8c3269407500\id\1\final\
+        final String authToken = params.get("authtoken"); // user = authtoken for PS3 preauth
+        var nick = this.userManager.getUsernameForAuthToken(authToken);
+        if (nick == null) {
+            LOG.info("could not determine username for auth token {}", authToken);
+            nick = "UnknownPlayer";
+        }
 
-                        // block list - empty
-                        final String blkData = createGPEmptyListMessage("blk");
+        final String clientChallenge = params.get("challenge");
 
-                        // buddy list - empty
-                        final String bdyData = createGPEmptyListMessage("bdy");
+        // block list - empty
+        var blockList = createGPEmptyListMessage("blk");
+        send(blockList);
 
-                        // login data
-                        Map<String, String> responseDataMap = new LinkedHashMap<>();
-                        responseDataMap.put("lc", "2"); // int
-                        responseDataMap.put("sesskey", DUMMY_SESSION_KEY); // int
-                        responseDataMap.put("userid", DUMMY_USER_ID); // int
-                        responseDataMap.put("profileid", DUMMY_PROFILE_ID); // int
-                        responseDataMap.put("uniquenick", DUMMY_UNIQUE_NICK); // should be PSNID from PSN login - don't think we have any way of knowing this
-                        responseDataMap.put("lt", DUMMY_LOGIN_TOKEN); // string // login token
-                        // password = partnerChallenge for PS3 preauth
-                        responseDataMap.put("proof", StringUtils.gsLoginProof(Constants.DUMMY_PARTNER_CHALLENGE, user, clientChallenge, DUMMY_SERVER_CHALLENGE));
-                        responseDataMap.put("id", "1"); // int
+        // buddy list - empty
+        var bdyData = createGPEmptyListMessage("bdy");
+        send(bdyData);
 
-                        out.print(blkData + bdyData + createGPMessage(responseDataMap));
-                        out.flush();
-                    } else if(directive.equals("updatepro")) {
-                        // \ updatepro\\sesskey\5555\publicmask\0\partnerid\19\final\
+        // login data
+        Map<String, String> responseDataMap = new LinkedHashMap<>();
+        responseDataMap.put("lc", "2"); // int
+        responseDataMap.put("sesskey", DUMMY_SESSION_KEY); // int
+        responseDataMap.put("userid", DUMMY_USER_ID); // int
+        var id = UserUtils.profileID(nick);
+        profileID = id;
+        this.nick = nick;
+        responseDataMap.put("profileid", Long.toString(id)); // int
+        responseDataMap.put("uniquenick", nick);
+        responseDataMap.put("lt", DUMMY_LOGIN_TOKEN); // string // login token
+        // password = partnerChallenge for PS3 preauth
+        responseDataMap.put("proof", StringUtils.gsLoginProof(Constants.DUMMY_PARTNER_CHALLENGE, authToken, clientChallenge, DUMMY_SERVER_CHALLENGE));
+        responseDataMap.put("id", "1"); // int
+
+        synchronized (GPCMServiceThread.class) {
+            handles.put(profileID, this);
+        }
+
+        send(createGPMessage(responseDataMap));
+    }
+
+    private void handleUpdateProfile(Map<String, String> params) throws IOException {
+        // \ updatepro\\sesskey\5555\publicmask\0\partnerid\19\final\
 
                         /*// update profile, setting publicmask=0 ? maybe making the profile invisible to the rest of
                         // the gamespy network because it is a shadow PS account?
@@ -123,38 +240,32 @@ public class GPCMServiceThread extends Thread {
                         loginResponseData.put("sig", "xxx"); // don't know what this is
                         String loginData = createGPMessage(loginResponseData);
                         out.print(loginData);*/
-                        out.flush();
-                    } else if(directive.equals("ka")) {
-                        // \ka\\final\
-                        // keep-alive - just send it back (client will ignore)
-                        Map<String,String> responseData = new LinkedHashMap<>();
-                        responseData.put("ka", "");
-                        out.print(createGPMessage(responseData));
-                        out.flush();
-                    } else {
-                        // directive unknown/not implemented yet
-                        String clientRequestString = readGPMessage(reader);
-                        if(clientRequestString != null && clientRequestString.length() > 0) {
-                            LOG.info("unimplemented directive '" + directive + "': " + clientRequestString);
-                        }
-                    }
+    }
 
+    private void handleKeepAlive(Map<String, String> params) throws IOException {
+        // \ka\\final\
+        // keep-alive - just send it back (client will ignore)
+        Map<String,String> responseData = new LinkedHashMap<>();
+        responseData.put("ka", "");
+        send(createGPMessage(responseData));
+    }
+
+    private void handleStatus(GPMessageReader.Message msg) throws IOException {
+        boolean online = msg.getCommandValue().equals("2");
+        String status = msg.getParams().get("statstring");
+        String location = msg.getParams().get("locstring");
+        var user = this.userManager.updateStatus(this.profileID, nick, online, status, location);
+        synchronized (GPCMServiceThread.class) {
+            var subs = subscribers.get(profileID);
+            if (subs != null) {
+                for(var subProfileID : subs) {
+                   var handle = handles.get(subProfileID);
+                   if (handle != null) {
+                       LOG.info("Broadcasting user status {} -> {}", this.profileID, subProfileID);
+                       handle.sendUserStatus(user);
+                   }
                 }
-
-            }
-
-        } catch (GPNetworkException e) {
-            LOG.info("Client closed connection");
-        } catch (IOException | InterruptedException e) {
-            e.printStackTrace();
-        } finally {
-            try {
-                LOG.info("Closing socket");
-                socket.close();
-            } catch(IOException e) {
-                LOG.info("Could not close socket. Oh well..");
             }
         }
     }
-
 }

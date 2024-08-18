@@ -7,6 +7,7 @@ import org.apache.commons.codec.digest.DigestUtils;
 
 import java.nio.ByteBuffer;
 import java.security.MessageDigest;
+import java.security.SecureRandom;
 import java.util.Map;
 import java.util.Random;
 
@@ -15,6 +16,9 @@ import static com.gonespy.service.util.GsLargeInt.GS_LARGEINT_DIGIT_SIZE_BYTES;
 public abstract class StringUtils {
 
     private static final String MD5_FILLER = Strings.padEnd("", 48, ' ');
+    private static final String ALPHANUMERIC = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz1234567890";
+    static SecureRandom rnd = new SecureRandom();
+
 
     public static String asciiToReadableHex(byte[] bytes) {
         StringBuilder hex = new StringBuilder();
@@ -160,6 +164,14 @@ public abstract class StringUtils {
             md.update(lint.dataAsByteArray(), dataStart, byteLength);
             lint.gsLargeIntReverseBytes();
         }
+    }
+
+    public static String randomString(int len){
+        var sb = new StringBuilder(len);
+        for(int i = 0; i < len; i++) {
+            sb.append(ALPHANUMERIC.charAt(rnd.nextInt(ALPHANUMERIC.length())));
+        }
+        return sb.toString();
     }
 
 }

@@ -7,11 +7,13 @@ package com.gonespy.service.gpsp;
  *
  */
 
+import com.gonespy.service.user.UserManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.net.ServerSocket;
+import java.net.Socket;
 
 public class GPSPService implements Runnable {
 
@@ -20,8 +22,10 @@ public class GPSPService implements Runnable {
 
     public static final int GPSP_PORT_NUMBER = 29901;
 
-    public static void main(String[] args) {
-        new GPSPService().run();
+    private final UserManager userManager;
+
+    public GPSPService(UserManager userManager) {
+        this.userManager = userManager;
     }
 
     @Override
@@ -29,7 +33,9 @@ public class GPSPService implements Runnable {
         try (ServerSocket serverSocket = new ServerSocket(GPSP_PORT_NUMBER)) {
             LOG.info("Listening on port " + GPSP_PORT_NUMBER);
             while (true) {
-                new GPSPServiceThread(serverSocket.accept()).start();
+                Socket clientSocket = serverSocket.accept();
+                LOG.info("Accepted new connection from client {}", clientSocket.getRemoteSocketAddress());
+                new GPSPServiceThread(userManager, clientSocket).start();
             }
         } catch (IOException e) {
             System.err.println("Could not listen on port " + GPSP_PORT_NUMBER);
