@@ -13,5 +13,13 @@ refer to the instructions there.
 
 # Tested games
 
-Unreal Tournament 3 - Can see and join games. With gonespy, you could play "online" but only against bots.
-Dungeon Defenders - Can see and join custom games (it was possible to co-op using gonespy, but it required using private games)
+ - Unreal Tournament 3 - Can see and join games. With gonespy, you could play "online" but only against bots.
+
+ - Dungeon Defenders - Can see and join custom games (it was possible to co-op using gonespy, but it required using private games)
+
+# Credits
+
+Most of the credit goes to the original author of https://github.com/gonespy/bstormps3
+
+https://github.com/AdmiralCurtiss/nintendo_dwc_emulator was also very helpful in figuring out how certain aspects
+of the GameSpy protocol work.
