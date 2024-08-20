@@ -15,54 +15,53 @@ import org.slf4j.LoggerFactory;
 
 public class RunAllServices {
 
-    private static final String DISPLAY_NAME = RunAllServices.class.getSimpleName();
-    private static final Logger LOG = LoggerFactory.getLogger(DISPLAY_NAME);
+  private static final String DISPLAY_NAME = RunAllServices.class.getSimpleName();
+  private static final Logger LOG = LoggerFactory.getLogger(DISPLAY_NAME);
 
-    public static void main(String[] args) {
+  public static void main(String[] args) {
 
-        var sm = new ServerManager();
-        var um = new UserManager();
+    var sm = new ServerManager();
+    var um = new UserManager();
 
-        Thread availabilityServiceThread = new Thread(new AvailabilityService(sm));
+    Thread availabilityServiceThread = new Thread(new AvailabilityService(sm));
 
-        Thread gpcmServiceThread = new Thread(new GPCMService(um));
+    Thread gpcmServiceThread = new Thread(new GPCMService(um));
 
-        Thread gpspServiceThread = new Thread(new GPSPService(um));
+    Thread gpspServiceThread = new Thread(new GPSPService(um));
 
-        Thread gstatsServiceThread = new Thread(() -> new GStatsService().run());
+    Thread gstatsServiceThread = new Thread(() -> new GStatsService().run());
 
-        Thread authServiceThread = new Thread(() -> {
-            try {
+    Thread authServiceThread =
+        new Thread(
+            () -> {
+              try {
                 new AuthService(um).run("server", "resources/dw-auth-config.yml");
-            } catch (Exception e) {
+              } catch (Exception e) {
                 throw new RuntimeException(e);
-            }
-        });
+              }
+            });
 
-        Thread sakeServiceThread = new Thread(() -> SakeService.main(new String[]{"server", "resources/dw-sake-config.yml"}));
+    Thread sakeServiceThread =
+        new Thread(() -> SakeService.main(new String[] {"server", "resources/dw-sake-config.yml"}));
 
-        Thread serverListServiceThread = new Thread(new ServerListService(sm));
+    Thread serverListServiceThread = new Thread(new ServerListService(sm));
 
-        Thread natnegServiceThread = new Thread(new NatnegService());
+    Thread natnegServiceThread = new Thread(new NatnegService());
 
-        gpcmServiceThread.start();
-        availabilityServiceThread.start();
-        gpspServiceThread.start();
-        gstatsServiceThread.start();
+    gpcmServiceThread.start();
+    availabilityServiceThread.start();
+    gpspServiceThread.start();
+    gstatsServiceThread.start();
 
-        authServiceThread.start();
-        DropwizardProbe.probeOnPort(443, true);
+    authServiceThread.start();
+    DropwizardProbe.probeOnPort(443, true);
 
-        sakeServiceThread.start();
-        DropwizardProbe.probeOnPort(80, true);
+    sakeServiceThread.start();
+    DropwizardProbe.probeOnPort(80, true);
 
-        serverListServiceThread.start();
-        natnegServiceThread.start();
+    serverListServiceThread.start();
+    natnegServiceThread.start();
 
-        LOG.info("=== ALL SERVICES STARTED! ===");
-
-    }
-
-
-
+    LOG.info("=== ALL SERVICES STARTED! ===");
+  }
 }

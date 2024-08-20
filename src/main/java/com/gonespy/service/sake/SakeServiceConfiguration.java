@@ -6,7 +6,6 @@ import io.federecio.dropwizard.swagger.SwaggerBundleConfiguration;
 
 public class SakeServiceConfiguration extends Configuration {
 
-    @JsonProperty("swagger")
-    public SwaggerBundleConfiguration swaggerBundleConfiguration;
-
+  @JsonProperty("swagger")
+  public SwaggerBundleConfiguration swaggerBundleConfiguration;
 }

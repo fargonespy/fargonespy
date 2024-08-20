@@ -10,86 +10,96 @@ import java.util.regex.Pattern;
 
 public abstract class GPMessageUtils {
 
-    private static String MESSAGE_DELIMITER = "\\";
-    private static char MESSAGE_DELIMITER_CHAR = '\\';
-    private static String REGEX_ESCAPED_MESSAGE_DELIMITER = "\\\\";
-    private static String MESSAGE_TERMINATOR = MESSAGE_DELIMITER + "final" + MESSAGE_DELIMITER;
+  private static String MESSAGE_DELIMITER = "\\";
+  private static char MESSAGE_DELIMITER_CHAR = '\\';
+  private static String REGEX_ESCAPED_MESSAGE_DELIMITER = "\\\\";
+  private static String MESSAGE_TERMINATOR = MESSAGE_DELIMITER + "final" + MESSAGE_DELIMITER;
 
-    private static Pattern DIRECTIVE_PATTERN = Pattern.compile("^" + REGEX_ESCAPED_MESSAGE_DELIMITER + "([^" +
-            REGEX_ESCAPED_MESSAGE_DELIMITER + "]*)" + REGEX_ESCAPED_MESSAGE_DELIMITER);
+  private static Pattern DIRECTIVE_PATTERN =
+      Pattern.compile(
+          "^"
+              + REGEX_ESCAPED_MESSAGE_DELIMITER
+              + "([^"
+              + REGEX_ESCAPED_MESSAGE_DELIMITER
+              + "]*)"
+              + REGEX_ESCAPED_MESSAGE_DELIMITER);
 
-    public static String readGPMessage(InputStream reader) throws IOException {
-        StringBuilder msg = new StringBuilder();
-        byte[] buffer = new byte[1024];
-        int read;
-        String cmd;
-        while (true) {
-            read = reader.read(buffer);
-            if (read == -1) {
-                break;
-            }
-            String bytesRead = new String(buffer, 0, read);
-            msg.append(bytesRead);
+  public static String readGPMessage(InputStream reader) throws IOException {
+    StringBuilder msg = new StringBuilder();
+    byte[] buffer = new byte[1024];
+    int read;
+    String cmd;
+    while (true) {
+      read = reader.read(buffer);
+      if (read == -1) {
+        break;
+      }
+      String bytesRead = new String(buffer, 0, read);
+      msg.append(bytesRead);
 
-            var d = msg.toString();
-            if (d.isEmpty()) {
-                throw new RuntimeException("empty command");
-            }
-            if (d.charAt(0) != MESSAGE_DELIMITER_CHAR) {
-                throw new RuntimeException("expected delimiter");
-            }
+      var d = msg.toString();
+      if (d.isEmpty()) {
+        throw new RuntimeException("empty command");
+      }
+      if (d.charAt(0) != MESSAGE_DELIMITER_CHAR) {
+        throw new RuntimeException("expected delimiter");
+      }
 
-            String val;
-            for (var i = 1; i < d.length(); i++) {
-                if (d.charAt(i) == MESSAGE_DELIMITER_CHAR) {
-                   val = d.substring(1, i);
-                   break;
-                }
-            }
-
-            if(bytesRead.endsWith(MESSAGE_TERMINATOR)) {
-                break;
-            }
+      String val;
+      for (var i = 1; i < d.length(); i++) {
+        if (d.charAt(i) == MESSAGE_DELIMITER_CHAR) {
+          val = d.substring(1, i);
+          break;
         }
-        return msg.toString();
-    }
+      }
 
-    public static String getGPDirective(String s) {
-        Matcher m = DIRECTIVE_PATTERN.matcher(s);
-        if(m.find()) {
-            return m.group(1);
-        }
-        return null;
+      if (bytesRead.endsWith(MESSAGE_TERMINATOR)) {
+        break;
+      }
     }
+    return msg.toString();
+  }
 
-    public static String createGPMessage(Map<String, String> data) {
-        StringBuilder b = new StringBuilder();
-        for(String key : data.keySet()) {
-            b.append(MESSAGE_DELIMITER).append(key).append(MESSAGE_DELIMITER).append(data.get(key));
-        }
-        b.append(MESSAGE_TERMINATOR);
-        return b.toString();
+  public static String getGPDirective(String s) {
+    Matcher m = DIRECTIVE_PATTERN.matcher(s);
+    if (m.find()) {
+      return m.group(1);
     }
+    return null;
+  }
 
-    public static String createGPEmptyListMessage(String key) {
-        Map<String, String> map = new LinkedHashMap<>();
-        map.put(key, "0");
-        map.put("list", "");
-        return createGPMessage(map);
+  public static String createGPMessage(Map<String, String> data) {
+    StringBuilder b = new StringBuilder();
+    for (String key : data.keySet()) {
+      b.append(MESSAGE_DELIMITER).append(key).append(MESSAGE_DELIMITER).append(data.get(key));
     }
+    b.append(MESSAGE_TERMINATOR);
+    return b.toString();
+  }
 
-    public static Map<String, String> parseClientLogin (String clientLoginString) {
-        Map<String, String> map = new HashMap<>();
-        // remove directive (leading '\xxx\\')
-        String str = clientLoginString.replaceFirst(
-                REGEX_ESCAPED_MESSAGE_DELIMITER + "[^" + REGEX_ESCAPED_MESSAGE_DELIMITER + "]*" +
-                        REGEX_ESCAPED_MESSAGE_DELIMITER + REGEX_ESCAPED_MESSAGE_DELIMITER,
-                ""
-        );
-        String[] parts = str.split(REGEX_ESCAPED_MESSAGE_DELIMITER);
-        for(int i = 0; i < parts.length-1; i += 2) {
-            map.put(parts[i], parts[i + 1]);
-        }
-        return map;
+  public static String createGPEmptyListMessage(String key) {
+    Map<String, String> map = new LinkedHashMap<>();
+    map.put(key, "0");
+    map.put("list", "");
+    return createGPMessage(map);
+  }
+
+  public static Map<String, String> parseClientLogin(String clientLoginString) {
+    Map<String, String> map = new HashMap<>();
+    // remove directive (leading '\xxx\\')
+    String str =
+        clientLoginString.replaceFirst(
+            REGEX_ESCAPED_MESSAGE_DELIMITER
+                + "[^"
+                + REGEX_ESCAPED_MESSAGE_DELIMITER
+                + "]*"
+                + REGEX_ESCAPED_MESSAGE_DELIMITER
+                + REGEX_ESCAPED_MESSAGE_DELIMITER,
+            "");
+    String[] parts = str.split(REGEX_ESCAPED_MESSAGE_DELIMITER);
+    for (int i = 0; i < parts.length - 1; i += 2) {
+      map.put(parts[i], parts[i + 1]);
     }
+    return map;
+  }
 }
