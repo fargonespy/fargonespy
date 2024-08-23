@@ -16,6 +16,7 @@ public class Crypter {
         switch (game) {
           case "ut3ps3" -> "nT2Mtz";
           case "dundefndps3" -> "B1UcDx";
+          case "50centsandps3" -> "ORydHB";
           default -> "";
         };
     if (key.isEmpty()) {
