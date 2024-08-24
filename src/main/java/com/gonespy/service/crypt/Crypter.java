@@ -17,6 +17,7 @@ public class Crypter {
           case "ut3ps3" -> "nT2Mtz";
           case "dundefndps3" -> "B1UcDx";
           case "50centsandps3" -> "ORydHB";
+          case "atlasps3" -> "dOlNGJlO";
           default -> "";
         };
     if (key.isEmpty()) {

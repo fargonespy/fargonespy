@@ -59,15 +59,17 @@ public class AuthResource {
     Response response = null;
     switch (requestType) {
       case "LoginPs3Cert":
-        response = loginPs3AuthResponse(map);
+      case "LoginPs3CertWithGameId":
+        response = loginPs3AuthResponse(requestType, map);
         break;
       case "LoginRemoteAuth":
-        response = loginRemoteAuthResponse(map);
+      case "LoginRemoteAuthWithGameId":
+        response = loginRemoteAuthResponse(requestType, map);
     }
     return response;
   }
 
-  private Response loginPs3AuthResponse(Map<String, Object> requestData) {
+  private Response loginPs3AuthResponse(String requestType, Map<String, Object> requestData) {
     var nt = requestData.get("npticket");
     if (nt == null) {
       LOG.error("request missing npticket");
@@ -106,13 +108,13 @@ public class AuthResource {
     soapData.put("authToken", authToken);
     soapData.put("partnerChallenge", DUMMY_PARTNER_CHALLENGE);
 
-    String response = generateSoapResponse(LOGIN_PS3_CERT_RESULT, soapData);
+    String response = generateSoapResponse(requestType + "Result", soapData);
     LOG.info("RESPONSE:");
     LOG.info(response);
     return Response.status(Response.Status.OK).entity(response).build();
   }
 
-  private Response loginRemoteAuthResponse(Map<String, Object> inputData) {
+  private Response loginRemoteAuthResponse(String requestType, Map<String, Object> inputData) {
     LOG.warn("WARNING: game uses remote auth login which does not work!");
 
     Map<String, Object> soapData = new LinkedHashMap<>();
@@ -123,7 +125,7 @@ public class AuthResource {
         CertificateUtils.getCertificateEaEmu(inputData));
     soapData.put("peerkeyprivate", PEER_KEY_PRIVATE);
 
-    String response = generateSoapResponse(LOGIN_REMOTE_AUTH_RESULT, soapData);
+    String response = generateSoapResponse(requestType + "Result", soapData);
     LOG.info("RESPONSE:");
     LOG.info(response);
     return Response.status(Response.Status.OK).entity(response).build();
