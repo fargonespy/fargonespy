@@ -13,9 +13,12 @@ refer to the instructions there.
 
 # Tested games
 
- - Unreal Tournament 3 - Can see and join games. With gonespy, you could play "online" but only against bots.
+| Game                    | Works? | Status                                                                                                                                                          |
+|-------------------------|--------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Dungeon Defenders       | Yes    | When connected to the same instance, players can join each other's lobbies. When connected to separate instances, players can be manually invited to the lobby. |
+| Joe Danger 2: The Movie | No     | No. Login does not work.                                                                                                                                        |
+| Unreal Tournament 3     | Yes    | When connected to the same instance, players can join each other's lobbies.                                                                                     |
 
- - Dungeon Defenders - Can see and join custom games (it was possible to co-op using gonespy, but it required using private games)
 
 # Credits
 
