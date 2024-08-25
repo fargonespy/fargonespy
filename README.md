@@ -24,11 +24,13 @@ browser with information about configuring your PS3 DNS settings.
 
 # Tested games
 
-| Game                    | Works? | Status                                                                                                                                                          |
-|-------------------------|--------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Dungeon Defenders       | Yes    | When connected to the same instance, players can join each other's lobbies. When connected to separate instances, players can be manually invited to the lobby. |
-| Joe Danger 2: The Movie | No     | No. Login does not work.                                                                                                                                        |
-| Unreal Tournament 3     | Yes    | When connected to the same instance, players can join each other's lobbies.                                                                                     |
+| Game                      | Works? | Status                                                                                                                                                          |
+|---------------------------|--------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Dungeon Defenders         | Yes    | When connected to the same instance, players can join each other's lobbies. When connected to separate instances, players can be manually invited to the lobby. |
+| Guardians of Middle-earth | No     | Game crashes after attempting matchmaking, likely related to the fact that login doesn't work.                                                                  |
+| Joe Danger 2: The Movie   | No     | Login does not work.                                                                                                                                            |
+| Mortal Kombat 9           | No     | Login doesn't work. Tested pre-patched version.                                                                                                                 |
+| Unreal Tournament 3       | Yes    | When connected to the same instance, players can join each other's lobbies.                                                                                     |
 
 # Credits
 
