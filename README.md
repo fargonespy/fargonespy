@@ -16,10 +16,10 @@ First, make sure you have a recent version of Java installed from https://www.or
 Download the latest fargonespy jar & dns exe files
 from https://gitlab.com/fargonespy1/fargonespy/-/tree/master/release?ref_type=heads
 
-First run dns-<version>.exe which will start a simple DNS server that will instruct your PS3 to send gamespy traffic to
+First run `dns-<version>.exe` which will start a simple DNS server that will instruct your PS3 to send gamespy traffic to
 the fargonespy server that will be started in the next step.
 
-Then double-click on the downloaded fargonespy-<version>.jar file which, after a couple of seconds, should open a web
+Then double-click on the downloaded `fargonespy-<version>.jar` file which, after a couple of seconds, should open a web
 browser with information about configuring your PS3 DNS settings.
 
 # Tested games
