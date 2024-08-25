@@ -2,6 +2,7 @@ package com.gonespy.service;
 
 import com.gonespy.service.auth.AuthService;
 import com.gonespy.service.availability.AvailabilityService;
+import com.gonespy.service.crypt.Crypter;
 import com.gonespy.service.gpcm.GPCMService;
 import com.gonespy.service.gpsp.GPSPService;
 import com.gonespy.service.natneg.NatnegService;
@@ -20,6 +21,8 @@ public class RunAllServices {
   private static final Logger LOG = LoggerFactory.getLogger(DISPLAY_NAME);
 
   public static void main(String[] args) {
+    Crypter.loadKeys();
+
     var sm = new ServerManager();
     var um = new UserManager();
 

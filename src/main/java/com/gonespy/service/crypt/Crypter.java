@@ -2,6 +2,9 @@ package com.gonespy.service.crypt;
 
 import com.gonespy.service.gpcm.GPCMServiceThread;
 import java.nio.charset.StandardCharsets;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Scanner;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -10,17 +13,29 @@ import org.slf4j.LoggerFactory;
 public class Crypter {
   private static final Logger LOG = LoggerFactory.getLogger(GPCMServiceThread.class);
 
-  public static byte[] getKey(String game) {
+  private static Map<String, String> keys = new HashMap<>();
+
+  public static void loadKeys() {
     // Taken from https://github.com/AdmiralCurtiss/nintendo_dwc_emulator/blob/master/gslist.cfg
-    String key =
-        switch (game) {
-          case "ut3ps3" -> "nT2Mtz";
-          case "dundefndps3" -> "B1UcDx";
-          case "50centsandps3" -> "ORydHB";
-          case "atlasps3" -> "dOlNGJlO";
-          default -> "";
-        };
-    if (key.isEmpty()) {
+    var is = Crypter.class.getResourceAsStream("/keys.csv");
+    if (is == null) {
+      throw new RuntimeException("could not load keys");
+    }
+    var scanner = new Scanner(is);
+    while (scanner.hasNextLine()) {
+      var line = scanner.nextLine();
+      var parts = line.split(",");
+      if (parts.length != 2) {
+        LOG.warn("ignoring invalid key entry: {}", line);
+        continue;
+      }
+      keys.put(parts[0], parts[1]);
+    }
+  }
+
+  public static byte[] getKey(String game) {
+    String key = keys.get(game);
+    if (key == null) {
       LOG.info("No key available for game {}", game);
       key = "zzzzzz";
     }
