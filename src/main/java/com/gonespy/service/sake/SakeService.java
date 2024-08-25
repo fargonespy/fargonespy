@@ -5,10 +5,12 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.PropertyNamingStrategy;
 import com.fasterxml.jackson.datatype.jdk8.Jdk8Module;
+import com.gonespy.service.sake.resources.InstructionResource;
 import com.gonespy.service.sake.resources.SakeResource;
 import com.gonespy.service.sake.resources.VersionResource;
 import io.dropwizard.Application;
 import io.dropwizard.configuration.EnvironmentVariableSubstitutor;
+import io.dropwizard.configuration.ResourceConfigurationSourceProvider;
 import io.dropwizard.configuration.SubstitutingSourceProvider;
 import io.dropwizard.setup.Bootstrap;
 import io.dropwizard.setup.Environment;
@@ -25,12 +27,14 @@ public class SakeService extends Application<SakeServiceConfiguration> {
     try {
       new SakeService().run(args);
     } catch (Exception e) {
-      e.printStackTrace();
+      throw new RuntimeException(e);
     }
   }
 
   @Override
   public void initialize(Bootstrap<SakeServiceConfiguration> bootstrap) {
+    bootstrap.setConfigurationSourceProvider(new ResourceConfigurationSourceProvider());
+
     bootstrap.setConfigurationSourceProvider(
         new SubstitutingSourceProvider(
             bootstrap.getConfigurationSourceProvider(),
@@ -54,6 +58,7 @@ public class SakeService extends Application<SakeServiceConfiguration> {
 
     // resources
     environment.jersey().register(new VersionResource());
+    environment.jersey().register(new InstructionResource());
     environment.jersey().register(sakeResource);
     environment.jersey().register(new JerseyObjectMapper());
 

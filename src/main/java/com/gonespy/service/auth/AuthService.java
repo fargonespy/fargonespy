@@ -8,20 +8,28 @@ import com.fasterxml.jackson.datatype.jdk8.Jdk8Module;
 import com.gonespy.service.auth.resources.AuthResource;
 import com.gonespy.service.auth.resources.VersionResource;
 import com.gonespy.service.user.UserManager;
+import com.google.common.collect.ImmutableMap;
 import io.dropwizard.Application;
-import io.dropwizard.configuration.EnvironmentVariableSubstitutor;
+import io.dropwizard.configuration.ResourceConfigurationSourceProvider;
 import io.dropwizard.configuration.SubstitutingSourceProvider;
 import io.dropwizard.setup.Bootstrap;
 import io.dropwizard.setup.Environment;
 import io.federecio.dropwizard.swagger.SwaggerBundle;
 import io.federecio.dropwizard.swagger.SwaggerBundleConfiguration;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.security.Security;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.ext.ContextResolver;
 import javax.ws.rs.ext.ExceptionMapper;
 import javax.ws.rs.ext.Provider;
+import org.apache.commons.io.IOUtils;
+import org.apache.commons.lang3.text.StrSubstitutor;
 
 public class AuthService extends Application<AuthServiceConfiguration> {
+  private static final String KEYSTORE_FILE = "myKeyStore.jks";
 
   static {
     Security.setProperty("jdk.tls.disabledAlgorithms", "");
@@ -37,11 +45,29 @@ public class AuthService extends Application<AuthServiceConfiguration> {
 
   @Override
   public void initialize(Bootstrap<AuthServiceConfiguration> bootstrap) {
-    bootstrap.setConfigurationSourceProvider(
-        new SubstitutingSourceProvider(
-            bootstrap.getConfigurationSourceProvider(),
-            // not strict as we want to be able to supply defaults
-            new EnvironmentVariableSubstitutor(false)));
+    var is = this.getClass().getClassLoader().getResourceAsStream(KEYSTORE_FILE);
+    if (is == null) {
+      throw new RuntimeException("could not find keystore resource...");
+    }
+
+    try {
+      var tempDir = Files.createTempDirectory("fargonespy");
+      var tempFile = Paths.get(tempDir.toString(), KEYSTORE_FILE);
+      System.out.println("writing keystore to temp file " + tempFile);
+
+      try (var os = new FileOutputStream(tempFile.toFile())) {
+        IOUtils.copy(is, os);
+      }
+
+      bootstrap.setConfigurationSourceProvider(new ResourceConfigurationSourceProvider());
+
+      var sub = new StrSubstitutor(ImmutableMap.of("keyStorePath", tempFile.toString()));
+      bootstrap.setConfigurationSourceProvider(
+          new SubstitutingSourceProvider(bootstrap.getConfigurationSourceProvider(), sub));
+
+    } catch (IOException e) {
+      throw new RuntimeException(e);
+    }
 
     bootstrap.addBundle(
         new SwaggerBundle<AuthServiceConfiguration>() {

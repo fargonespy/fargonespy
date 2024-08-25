@@ -10,6 +10,7 @@ import com.gonespy.service.serverlist.ServerListService;
 import com.gonespy.service.serverlist.ServerManager;
 import com.gonespy.service.stats.GStatsService;
 import com.gonespy.service.user.UserManager;
+import com.vaadin.open.Open;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -19,7 +20,6 @@ public class RunAllServices {
   private static final Logger LOG = LoggerFactory.getLogger(DISPLAY_NAME);
 
   public static void main(String[] args) {
-
     var sm = new ServerManager();
     var um = new UserManager();
 
@@ -35,14 +35,14 @@ public class RunAllServices {
         new Thread(
             () -> {
               try {
-                new AuthService(um).run("server", "resources/dw-auth-config.yml");
+                new AuthService(um).run("server", "/dw-auth-config.yml");
               } catch (Exception e) {
                 throw new RuntimeException(e);
               }
             });
 
     Thread sakeServiceThread =
-        new Thread(() -> SakeService.main(new String[] {"server", "resources/dw-sake-config.yml"}));
+        new Thread(() -> SakeService.main(new String[] {"server", "/dw-sake-config.yml"}));
 
     Thread serverListServiceThread = new Thread(new ServerListService(sm));
 
@@ -63,5 +63,7 @@ public class RunAllServices {
     natnegServiceThread.start();
 
     LOG.info("=== ALL SERVICES STARTED! ===");
+
+    Open.open("http://localhost:80");
   }
 }

@@ -1,15 +1,26 @@
 # FarGoneSpy
 
 This is a slightly enhanced version of https://github.com/gonespy/bstormps3 which changes the following:
- - Supports server listing: For supported games, users connected to the same fargonespy instance can see and join
-   each other's games. 
- - Works on modern versions of Java (the original version only worked with Java 8 JRE)
- - Fixes some performance issues that caused the server to unnecessarily use a lot of CPU.
+
+- Supports server listing: For supported games, users connected to the same fargonespy instance can see and join
+  each other's games.
+- Works on modern versions of Java (the original version only worked with Java 8 JRE)
+- Fixes some performance issues that caused the server to unnecessarily use a lot of CPU.
 
 # Usage
 
-The instructions are the same as for the original version at https://github.com/gonespy/bstormps3 so please
-refer to the instructions there.
+## Windows
+
+First, make sure you have a recent version of Java installed from https://www.oracle.com/java/technologies/downloads/
+
+Download the latest fargonespy jar & dns exe files
+from https://gitlab.com/fargonespy1/fargonespy/-/tree/master/release?ref_type=heads
+
+First run dns-<version>.exe which will start a simple DNS server that will instruct your PS3 to send gamespy traffic to
+the fargonespy server that will be started in the next step.
+
+Then double-click on the downloaded fargonespy-<version>.jar file which, after a couple of seconds, should open a web
+browser with information about configuring your PS3 DNS settings.
 
 # Tested games
 
@@ -18,7 +29,6 @@ refer to the instructions there.
 | Dungeon Defenders       | Yes    | When connected to the same instance, players can join each other's lobbies. When connected to separate instances, players can be manually invited to the lobby. |
 | Joe Danger 2: The Movie | No     | No. Login does not work.                                                                                                                                        |
 | Unreal Tournament 3     | Yes    | When connected to the same instance, players can join each other's lobbies.                                                                                     |
-
 
 # Credits
 
