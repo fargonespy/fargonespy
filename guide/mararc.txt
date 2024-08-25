@@ -1,7 +1,0 @@
-hide_disclaimer = "YES"
-ipv4_bind_addresses = "127.0.0.1"
-timestamp_type = 2
-random_seed_file = "secret.txt"
-
-csv2 = {}
-csv2["gamespy.com."] = "gamespydns.txt"
