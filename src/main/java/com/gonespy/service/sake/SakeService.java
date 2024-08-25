@@ -5,6 +5,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.PropertyNamingStrategy;
 import com.fasterxml.jackson.datatype.jdk8.Jdk8Module;
+import com.gonespy.service.sake.resources.InstructionResource;
 import com.gonespy.service.sake.resources.SakeResource;
 import com.gonespy.service.sake.resources.VersionResource;
 import io.dropwizard.Application;
@@ -54,6 +55,7 @@ public class SakeService extends Application<SakeServiceConfiguration> {
 
     // resources
     environment.jersey().register(new VersionResource());
+    environment.jersey().register(new InstructionResource());
     environment.jersey().register(sakeResource);
     environment.jersey().register(new JerseyObjectMapper());
 
