@@ -27,6 +27,7 @@ browser with information about configuring your PS3 DNS settings.
 | Game                       | Works? | Status                                                                                                                                                          |
 |----------------------------|--------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | 50 Cent: Blood on the Sand | Yes    | Need to be connected to the same fargonespy server to play co-op. Note that only the Japanese version has trophies.                                             |
+| Blitz: The League II       | No     | Doesn't work, but it's potentially fixable. The game makes calls to two unimplemented, undocumented endpoints: GetServerInfo.asp and GetPlayerStats.asp         |
 | Dungeon Defenders          | Yes    | When connected to the same instance, players can join each other's lobbies. When connected to separate instances, players can be manually invited to the lobby. |
 | Guardians of Middle-earth  | No     | Game crashes after attempting matchmaking, likely related to the fact that login doesn't work.                                                                  |
 | Joe Danger 2: The Movie    | No     | Login does not work.                                                                                                                                            |
