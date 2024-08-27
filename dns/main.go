@@ -1,16 +1,22 @@
 package main
 
 import (
+	"bufio"
 	"flag"
+	"fmt"
 	"log"
 	"net"
+	"os"
+	"runtime"
 
 	"github.com/miekg/dns"
 	"github.com/qdm12/dns/v2/pkg/nameserver"
+	"golang.org/x/sync/errgroup"
 )
 
 var (
-	forwarder = flag.String("forwarder", "", "The IP and port to forward non-gamespy requests to. Detected automatically from system settings if not specified.")
+	forwarder      = flag.String("forwarder", "", "The IP and port to forward non-gamespy requests to. Detected automatically from system settings if not specified.")
+	logAllRequests = flag.Bool("log_all_requests", false, "Log all DNS requests, not just for GameSpy addresses.")
 )
 
 type interceptor struct {
@@ -38,12 +44,21 @@ func (g *interceptor) ServeDNS(w dns.ResponseWriter, req *dns.Msg) {
 	log.Printf("handled request for %q", req.Question[0].Name)
 }
 
+func fatalf(format string, v ...any) {
+	log.Printf(format, v...)
+	if runtime.GOOS == "windows" {
+		fmt.Println("Press Enter to continue.")
+		_, _ = bufio.NewReader(os.Stdin).ReadBytes('\n')
+	}
+	os.Exit(1)
+}
+
 func main() {
 	flag.Parse()
 
 	servers := nameserver.GetDNSServers()
 	if len(servers) == 0 {
-		log.Fatalf("no DNS servers found")
+		fatalf("no DNS servers found")
 	}
 
 	forwardServer := *forwarder
@@ -55,7 +70,7 @@ func main() {
 
 		forwardServer = servers[0].String()
 	}
-	log.Printf("using DNS server %q", forwardServer)
+	log.Printf("using upstream DNS server %q", forwardServer)
 
 	addr, err := net.InterfaceAddrs()
 	if err != nil {
@@ -63,7 +78,7 @@ func main() {
 		return
 	}
 
-	var listenAddr *net.IP
+	var listenAddrs []net.IP
 	for _, a := range addr {
 		log.Printf("interface addr: %s\n", a)
 		ip, _, err := net.ParseCIDR(a.String())
@@ -71,21 +86,25 @@ func main() {
 			log.Printf("could not parse addr: %s\n", err)
 			continue
 		}
-		if ip.IsLoopback() || ip.To4() == nil {
+		if ip.IsLoopback() || ip.To4() == nil || ip.IsLinkLocalUnicast() {
 			continue
 		}
-		listenAddr = &ip
-		break
+		listenAddrs = append(listenAddrs, ip)
 	}
 
-	if listenAddr == nil {
-		log.Fatalf("could not determine address to listen on")
+	if listenAddrs == nil {
+		fatalf("could not determine addresses to listen on")
 	}
 
-	log.Printf("listening on %s\n", listenAddr)
+	log.Printf("listening on %s\n", listenAddrs)
 
 	mux := dns.NewServeMux()
 	mux.HandleFunc(".", func(w dns.ResponseWriter, r *dns.Msg) {
+		if *logAllRequests {
+			for _, q := range r.Question {
+				log.Printf("non-gamespy request: %s\n", q.Name)
+			}
+		}
 		c := &dns.Client{}
 		reply, _, err := c.Exchange(r, forwardServer)
 		if err != nil {
@@ -97,15 +116,29 @@ func main() {
 			log.Printf("could not send reply: %s\n", err)
 		}
 	})
-	mux.Handle("gamespy.com", &interceptor{listenAddr: *listenAddr})
-	mux.Handle("gamespy.net", &interceptor{listenAddr: *listenAddr})
 
-	s := &dns.Server{
-		Addr:    listenAddr.String() + ":53",
-		Net:     "udp4",
-		Handler: mux,
+	log.Printf("GameSpy requests will be sent to %s", listenAddrs[0])
+
+	mux.Handle("gamespy.com", &interceptor{listenAddr: listenAddrs[0]})
+	mux.Handle("gamespy.net", &interceptor{listenAddr: listenAddrs[0]})
+
+	eg := errgroup.Group{}
+	for _, addr := range listenAddrs {
+		addr := addr
+		eg.Go(func() error {
+			s := &dns.Server{
+				Addr:    addr.String() + ":53",
+				Net:     "udp4",
+				Handler: mux,
+			}
+			if err := s.ListenAndServe(); err != nil {
+				return fmt.Errorf("could not start server on %s: %s\n", addr, err)
+			}
+			return nil
+		})
 	}
-	if err := s.ListenAndServe(); err != nil {
-		log.Fatalf("could not start server: %s\n", err)
+
+	if err := eg.Wait(); err != nil {
+		fatalf("could not start DNS server: %s", err)
 	}
 }

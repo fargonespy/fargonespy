@@ -1,4 +1,4 @@
-module dnstest
+module dns
 
 go 1.22
 
