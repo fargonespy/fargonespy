@@ -17,6 +17,7 @@ import (
 var (
 	forwarder      = flag.String("forwarder", "", "The IP and port to forward non-gamespy requests to. Detected automatically from system settings if not specified.")
 	logAllRequests = flag.Bool("log_all_requests", false, "Log all DNS requests, not just for GameSpy addresses.")
+	answerIP       = flag.String("answer_ip", "", "IP to answer with for intercepted requests. Automatically determined if not specified.")
 )
 
 type interceptor struct {
@@ -86,7 +87,7 @@ func main() {
 			log.Printf("could not parse addr: %s\n", err)
 			continue
 		}
-		if ip.IsLoopback() || ip.To4() == nil || ip.IsLinkLocalUnicast() {
+		if ip.IsLoopback() || ip.To4() == nil || ip.IsLinkLocalUnicast() || !ip.IsPrivate() {
 			continue
 		}
 		listenAddrs = append(listenAddrs, ip)
@@ -117,10 +118,20 @@ func main() {
 		}
 	})
 
-	log.Printf("GameSpy requests will be sent to %s", listenAddrs[0])
+	var answer net.IP
+	if *answerIP != "" {
+		answer = net.ParseIP(*answerIP)
+		if answer == nil {
+			fatalf("--answer_ip %s is not valid", *answerIP)
+		}
+	} else {
+		answer = listenAddrs[0]
+	}
 
-	mux.Handle("gamespy.com", &interceptor{listenAddr: listenAddrs[0]})
-	mux.Handle("gamespy.net", &interceptor{listenAddr: listenAddrs[0]})
+	log.Printf("GameSpy requests will be sent to %s", answer)
+
+	mux.Handle("gamespy.com", &interceptor{listenAddr: answer})
+	mux.Handle("gamespy.net", &interceptor{listenAddr: answer})
 
 	eg := errgroup.Group{}
 	for _, addr := range listenAddrs {
