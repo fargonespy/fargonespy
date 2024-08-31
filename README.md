@@ -24,15 +24,23 @@ browser with information about configuring your PS3 DNS settings.
 
 # Tested games
 
-| Game                       | Works? | Status                                                                                                                                                          |
-|----------------------------|--------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| 50 Cent: Blood on the Sand | Yes    | Need to be connected to the same fargonespy server to play co-op. Note that only the Japanese version has trophies.                                             |
-| Blitz: The League II       | No     | Doesn't work, but it's potentially fixable. The game makes calls to two unimplemented, undocumented endpoints: GetServerInfo.asp and GetPlayerStats.asp         |
-| Dungeon Defenders          | Yes    | When connected to the same instance, players can join each other's lobbies. When connected to separate instances, players can be manually invited to the lobby. |
-| Guardians of Middle-earth  | No     | Game crashes after attempting matchmaking, likely related to the fact that login doesn't work.                                                                  |
-| Joe Danger 2: The Movie    | No     | Login does not work.                                                                                                                                            |
-| Mortal Kombat 9            | No     | Login doesn't work. Tested pre-patched version.                                                                                                                 |
-| Unreal Tournament 3        | Yes    | When connected to the same instance, players can join each other's lobbies.                                                                                     |
+| Game                                   | Works?      | Status                                                                                                                                                          |
+|----------------------------------------|-------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| 50 Cent: Blood on the Sand             | Yes         | Need to be connected to the same fargonespy server to play co-op. Note that only the Japanese version has trophies.                                             |
+| Blacklight: Tango Down                 | No          | Login doesn't work.                                                                                                                                             |
+| Blitz: The League II                   | Potentially | Doesn't work, but it's potentially fixable. The game makes calls to two unimplemented, undocumented endpoints: GetServerInfo.asp and GetPlayerStats.asp         |
+| Damage Inc.: Pacific Squadron WWII     | No          | Login doesn't work.                                                                                                                                             |
+| Dungeon Defenders                      | Yes         | When connected to the same instance, players can join each other's lobbies. When connected to separate instances, players can be manually invited to the lobby. |
+| F.E.A.R. 2: Project Origin             | No          | Login doesn't work.                                                                                                                                             |
+| Guardians of Middle-earth              | Potentially | Game crashes after attempting matchmaking, likely related to the fact that login doesn't work. May work with the right listing key.                             |
+| Homefront                              | Potentially | Game requires some unimplemented non-gamespy endpoints.                                                                                                         |
+| Joe Danger 2: The Movie                | No          | Login does not work.                                                                                                                                            |
+| Mortal Kombat 9                        | No          | Login doesn't work. Tested pre-patched version.                                                                                                                 |
+| Mortal Kombat vs. DC Universe          | Potentially | Requires unimplemented, undocumented GameSpy endpoint.                                                                                                          |
+| MUD - FIM Motocross World Championship | No          | Login doesn't work.                                                                                                                                             |
+| Superstars V8 : Next Challenge         | No          | Login doesn't work.                                                                                                                                             |
+| Unreal Tournament 3                    | Yes         | When connected to the same instance, players can join each other's lobbies.                                                                                     |
+| WRC FIA World Rally Championship       | No          | Login doesn't work.                                                                                                                                             |
 
 # Credits
 
