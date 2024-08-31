@@ -41,6 +41,8 @@ browser with information about configuring your PS3 DNS settings.
 | Superstars V8 : Next Challenge         | No          | Login doesn't work.                                                                                                                                             |
 | Unreal Tournament 3                    | Yes         | When connected to the same instance, players can join each other's lobbies.                                                                                     |
 | WRC FIA World Rally Championship       | No          | Login doesn't work.                                                                                                                                             |
+| WRC 2: FIA World Rally Championship    | No          | Login doesn't work.                                                                                                                                             |
+
 
 # Credits
 
