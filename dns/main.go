@@ -8,6 +8,7 @@ import (
 	"net"
 	"os"
 	"runtime"
+	"strings"
 
 	"github.com/miekg/dns"
 	"github.com/qdm12/dns/v2/pkg/nameserver"
@@ -15,19 +16,24 @@ import (
 )
 
 var (
-	forwarder      = flag.String("forwarder", "", "The IP and port to forward non-gamespy requests to. Detected automatically from system settings if not specified.")
-	logAllRequests = flag.Bool("log_all_requests", false, "Log all DNS requests, not just for GameSpy addresses.")
-	answerIP       = flag.String("answer_ip", "", "IP to answer with for intercepted requests. Automatically determined if not specified.")
+	interceptDomains = flag.String("intercept_domains", "gamespy.com,gamespy.net", "Comma separated list of domains to intercept. Lookups for intercepted domains return the address determined by --answer_ip")
+	forwardDomains   = flag.String("forward_domains", ".", "Comma separated list of domains for which requests will be forwarded to the upstream DNS server.")
+	forwarder        = flag.String("forwarder", "", "The IP and port to forward non-intercepted requests to. Detected automatically from system settings if not specified.")
+	logAllRequests   = flag.Bool("log_all_requests", false, "Log all DNS requests, not just for GameSpy addresses.")
+	answerIP         = flag.String("answer_ip", "", "IP to answer with for intercepted requests. Automatically determined if not specified.")
 )
 
-type interceptor struct {
-	listenAddr net.IP
+// staticInterceptor responds with a fixed IP address.
+// Assumes that only A queries will be received.
+type staticInterceptor struct {
+	answerIP net.IP
 }
 
-func (g *interceptor) ServeDNS(w dns.ResponseWriter, req *dns.Msg) {
+func (si *staticInterceptor) ServeDNS(w dns.ResponseWriter, req *dns.Msg) {
 	m := &dns.Msg{}
 	m.SetReply(req)
 	m.Authoritative = true
+	m.Rcode = dns.RcodeSuccess
 	aRec := &dns.A{
 		Hdr: dns.RR_Header{
 			Name:   req.Question[0].Name,
@@ -35,7 +41,7 @@ func (g *interceptor) ServeDNS(w dns.ResponseWriter, req *dns.Msg) {
 			Class:  dns.ClassINET,
 			Ttl:    60,
 		},
-		A: g.listenAddr,
+		A: si.answerIP,
 	}
 	m.Answer = append(m.Answer, aRec)
 	if err := w.WriteMsg(m); err != nil {
@@ -52,6 +58,47 @@ func fatalf(format string, v ...any) {
 		_, _ = bufio.NewReader(os.Stdin).ReadBytes('\n')
 	}
 	os.Exit(1)
+}
+
+// forwardingInterceptor forwards all requests to another DNS server.
+type forwardingHandler struct {
+	forwardServer string
+}
+
+func (fh *forwardingHandler) ServeDNS(w dns.ResponseWriter, r *dns.Msg) {
+	if *logAllRequests {
+		for _, q := range r.Question {
+			log.Printf("forwarding request: %s %s\n", dns.Type(q.Qtype), q.Name)
+		}
+	}
+	c := &dns.Client{}
+	reply, _, err := c.Exchange(r, fh.forwardServer)
+	if err != nil {
+		log.Printf("could not query server: %s\n", err)
+		_ = w.Close()
+		return
+	}
+	if err := w.WriteMsg(reply); err != nil {
+		log.Printf("could not send reply: %s\n", err)
+	}
+}
+
+type refusingHandler struct {
+}
+
+func (fh *refusingHandler) ServeDNS(w dns.ResponseWriter, r *dns.Msg) {
+	if *logAllRequests {
+		for _, q := range r.Question {
+			log.Printf("refusing request: %s %s\n", dns.Type(q.Qtype), q.Name)
+		}
+	}
+	m := &dns.Msg{}
+	m.SetReply(r)
+	m.Rcode = dns.RcodeRefused
+	if err := w.WriteMsg(m); err != nil {
+		log.Printf("could not send reply: %s\n", err)
+		return
+	}
 }
 
 func main() {
@@ -100,23 +147,12 @@ func main() {
 	log.Printf("listening on %s\n", listenAddrs)
 
 	mux := dns.NewServeMux()
-	mux.HandleFunc(".", func(w dns.ResponseWriter, r *dns.Msg) {
-		if *logAllRequests {
-			for _, q := range r.Question {
-				log.Printf("non-gamespy request: %s\n", q.Name)
-			}
-		}
-		c := &dns.Client{}
-		reply, _, err := c.Exchange(r, forwardServer)
-		if err != nil {
-			log.Printf("could not query server: %s\n", err)
-			_ = w.Close()
-			return
-		}
-		if err := w.WriteMsg(reply); err != nil {
-			log.Printf("could not send reply: %s\n", err)
-		}
-	})
+	mux.Handle(".", &refusingHandler{})
+
+	for _, d := range strings.Split(*forwardDomains, ",") {
+		log.Printf("Will forward requests for %q.\n", d)
+		mux.Handle(d, &forwardingHandler{forwardServer: forwardServer})
+	}
 
 	var answer net.IP
 	if *answerIP != "" {
@@ -128,10 +164,12 @@ func main() {
 		answer = listenAddrs[0]
 	}
 
-	log.Printf("GameSpy requests will be sent to %s", answer)
+	log.Printf("Intercepted requests will be sent to %q.", answer)
 
-	mux.Handle("gamespy.com", &interceptor{listenAddr: answer})
-	mux.Handle("gamespy.net", &interceptor{listenAddr: answer})
+	for _, d := range strings.Split(*interceptDomains, ",") {
+		log.Printf("Will intercept requests for %q.\n", d)
+		mux.Handle(d, &staticInterceptor{answerIP: answer})
+	}
 
 	eg := errgroup.Group{}
 	for _, addr := range listenAddrs {
