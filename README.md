@@ -54,6 +54,10 @@ browser with information about configuring your PS3 DNS settings.
 | WRC FIA World Rally Championship       | No          | Login doesn't work.                                                                                                                                             |
 | WRC 2: FIA World Rally Championship    | No          | Login doesn't work.                                                                                                                                             |
 
+# Ports used by the server
+
+TCP: 80, 443, 29900, 29901
+UDP: 27900
 
 # Credits
 
