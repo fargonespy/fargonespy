@@ -1,0 +1,21 @@
+---
+services:
+  fargonespy:
+    build:
+      dockerfile: 'Dockerfile'
+    container_name: 'fargonespy'
+    ports:
+      - '0.0.0.0:53:53/udp'
+      - '0.0.0.0:53:53/tcp'
+      - '0.0.0.0:80:80/tcp'
+      - '0.0.0.0:443:443/tcp'
+      - '0.0.0.0:27900:27900/udp'
+      - '0.0.0.0:27901:27901/udp'
+      - '0.0.0.0:28910:28910/tcp'
+      - '0.0.0.0:29900:29900/tcp'
+      - '0.0.0.0:29901:29901/tcp'
+      - '0.0.0.0:29920:29920/tcp'
+    restart: 'unless-stopped'
+    environment:
+      - 'ANSWER_IP=192.168.88.249'
+      - 'FORWARD_IP=8.8.8.8:53'
