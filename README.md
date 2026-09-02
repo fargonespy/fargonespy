@@ -22,6 +22,22 @@ the fargonespy server that will be started in the next step.
 Then double-click on the downloaded `fargonespy-<version>.jar` file which, after a couple of seconds, should open a web
 browser with information about configuring your PS3 DNS settings.
 
+## Docker
+
+Just clone repo and run with docker-compose. Docker build Java
+and Go code and startup application. Two knobs you can change
+is (edit file `docker-compose.yml`):
+
+* `ANSWER_IP=192.168.1.100` - is your IP address where Fargonespy is answer
+* `FORWARD_IP=8.8.8.8:53` - is DNF forwarder for any other (such as PSN)
+records. Should be in `inet:port` format
+
+```shell
+√ MacBook % git clone git@github.com:fargonespy/fargonespy.git
+√ MacBook % cd fargonespy
+√ MacBook % docker compose up
+```
+
 # Tested games
 
 | Game                                      | Works?      | Status                                                                                                                                                          |
@@ -58,8 +74,8 @@ browser with information about configuring your PS3 DNS settings.
 
 # Ports used by the server
 
-TCP: 80, 443, 29900, 29901
-UDP: 27900
+TCP: 80, 443, 28910, 29900, 29901, 29920
+UDP: 53, 27900, 27901
 
 # Credits
 

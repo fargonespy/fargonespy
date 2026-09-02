@@ -34,6 +34,7 @@ func (si *staticInterceptor) ServeDNS(w dns.ResponseWriter, req *dns.Msg) {
 	m.SetReply(req)
 	m.Authoritative = true
 	m.Rcode = dns.RcodeSuccess
+	remoteAddr, _, _ := net.SplitHostPort(w.RemoteAddr().String())
 	aRec := &dns.A{
 		Hdr: dns.RR_Header{
 			Name:   req.Question[0].Name,
@@ -43,12 +44,13 @@ func (si *staticInterceptor) ServeDNS(w dns.ResponseWriter, req *dns.Msg) {
 		},
 		A: si.answerIP,
 	}
+
 	m.Answer = append(m.Answer, aRec)
 	if err := w.WriteMsg(m); err != nil {
-		log.Printf("could not send reply: %s\n", err)
+		log.Printf("[%s] could not send reply: %s\n", remoteAddr, err)
 		return
 	}
-	log.Printf("handled request for %q", req.Question[0].Name)
+	log.Printf("[%s] handled request for %q", remoteAddr, req.Question[0].Name)
 }
 
 func fatalf(format string, v ...any) {
@@ -68,18 +70,18 @@ type forwardingHandler struct {
 func (fh *forwardingHandler) ServeDNS(w dns.ResponseWriter, r *dns.Msg) {
 	if *logAllRequests {
 		for _, q := range r.Question {
-			log.Printf("forwarding request: %s %s\n", dns.Type(q.Qtype), q.Name)
+			log.Printf("[%s] forwarding request: %s %s\n", w.RemoteAddr(), dns.Type(q.Qtype), q.Name)
 		}
 	}
 	c := &dns.Client{}
 	reply, _, err := c.Exchange(r, fh.forwardServer)
 	if err != nil {
-		log.Printf("could not query server: %s\n", err)
+		log.Printf("[%s] could not query server: %s\n", w.RemoteAddr(), err)
 		_ = w.Close()
 		return
 	}
 	if err := w.WriteMsg(reply); err != nil {
-		log.Printf("could not send reply: %s\n", err)
+		log.Printf("[%s] could not send reply: %s\n", w.RemoteAddr(), err)
 	}
 }
 
@@ -89,14 +91,14 @@ type refusingHandler struct {
 func (fh *refusingHandler) ServeDNS(w dns.ResponseWriter, r *dns.Msg) {
 	if *logAllRequests {
 		for _, q := range r.Question {
-			log.Printf("refusing request: %s %s\n", dns.Type(q.Qtype), q.Name)
+			log.Printf("[%s] refusing request: %s %s\n", w.RemoteAddr(), dns.Type(q.Qtype), q.Name)
 		}
 	}
 	m := &dns.Msg{}
 	m.SetReply(r)
 	m.Rcode = dns.RcodeRefused
 	if err := w.WriteMsg(m); err != nil {
-		log.Printf("could not send reply: %s\n", err)
+		log.Printf("[%s] could not send reply: %s\n", w.RemoteAddr(), err)
 		return
 	}
 }
@@ -141,7 +143,8 @@ func main() {
 	}
 
 	if listenAddrs == nil {
-		fatalf("could not determine addresses to listen on")
+		log.Printf("could not determine addresses to listen on, try listen on 0.0.0.0")
+		listenAddrs = append(listenAddrs, net.ParseIP("0.0.0.0"))
 	}
 
 	log.Printf("listening on %s\n", listenAddrs)
